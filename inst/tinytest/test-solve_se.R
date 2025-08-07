@@ -1,7 +1,7 @@
+# Federico Boiocchi 872025
 # test-solve_se.R
 
-project_path <- "C:/Users/andre/Documents/brglm2/R"
-#project_path <- "~/brglm2/R"
+project_path <- "~/brglm2/R"
 
 source(file.path(project_path, "solve_se.R"))
 source(file.path(project_path, "se.R"))
@@ -131,5 +131,6 @@ ggplot(dfR) +
 # On the contrary we obtain different distribution if we split the 
 # k axis; for low k the distr. is more concentrated towards low times while
 # for high k is more widespread. 
+
 
 
