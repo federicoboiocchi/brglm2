@@ -132,5 +132,25 @@ ggplot(dfR) +
 # k axis; for low k the distr. is more concentrated towards low times while
 # for high k is more widespread. 
 
+# Values for mu*,b*,sigma*, across all parameters combinations
+
+mu_grid <- matrix(dfR$mu,size,size)
+b_grid <- matrix(dfR$b,size,size)
+sigma_grid <- matrix(dfR$sigma,size,size)
+
+contour_plot(k,g,mu_grid, "nleqslv_se and optim()", expression(mu["*"]))
+contour_plot(k,g,b_grid, "nleqslv_se and optim()", expression(b["*"]))
+contour_plot(k,g,sigma_grid, "nleqslv_se and optim()", expression(sigma["*"]))
+
+# aggregate MSE (aMSE)
+
+# aMSE = sigma*^2+(1-mu*)^2*((gamma)^2)/k
+mu <- dfR$mu;b <- dfR$b;sigma<-dfR$sigma
+aMSE <- (sigma)^2+((1-mu)^2)*(((gamma)^2)/kappa)
+rMSE <- matrix(sqrt(aMSE),size,size)
+contour_plot(k,g,rMSE, "nleqslv_se and optim()",expression("root aMSE"==sigma["*"]^2+(1-mu["*"])^2*gamma^2/k))
+
+
+
 
 
