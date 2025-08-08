@@ -1,7 +1,6 @@
 #' Solve the MDYPL state evolution equations with or without
 #' intercept, with signal strength or contaminated signal strength
 #'
-#' @param mu aggregate bias parameter.
 #' @param kappa asymptotic ratio of columns/rows of the design
 #'     matrix. `kappa` should be in `(0, 1)`.
 #' @param ss signal strength or corrupted signal strength, depending
@@ -48,13 +47,16 @@
 #' `init_iter` iterations of [optim()] with `method = init_method` are
 #' used towards minimizing `sum(se)^2`, where `se` is a vector of the
 #' state evolution functions. The solution is then passed to
-#' `nleqslv::nleqslv()` for a more aggressive iteration.
+#' `nleqslv::nleqslv()` for a more aggressive iteration. The state
+#' evolution equations are given in expressions (8) (model without
+#' intercept) and expression (15) (model with intercept) in Sterzinger
+#' & Kosmidis (2024).
 #'
 #' If `corrupted = FALSE` (default), then `ss` is the square root of
-#' the signal strength, which is the limit \deqn{\gamma^2} of
+#' the signal strength, which is the limit \eqn{\gamma^2} of
 #' \eqn{var(X \beta)}. If `corrupted = TRUE`, then `ss` is the square
 #' root of the corrupteed signal strength which is the limit
-#' \deqn{\nu^2} of \eqn{var(X \hat\beta(\alpha))}, where
+#' \eqn{\nu^2} of \eqn{var(X \hat\beta(\alpha))}, where
 #' \eqn{\hat\beta(\alpha)} is the maximimum Diaconis-Ylvisaker prior
 #' penalized likelihood (MDYPL) estimator as computed by [mdyplFit()]
 #' with shirnkage parameter \eqn{alpha}.
@@ -62,13 +64,66 @@
 #' If `intercept = NULL`, then the state evolution equations are
 #' solved for the model without intercept. If `intercept` is a real
 #' number, then the state evolution equations for the model with
-#' intercept are solved (i.e. with predictor \deqn{\eta_i = \theta +
+#' intercept are solved (i.e. with predictor \eqn{\eta_i = \theta +
 #' x_i^T \beta}). In that case, what `intercept` represents depends on
 #' the value of `corrupted`. If `corrupted = FALSE`, `intercept`
-#' represents the oracle value of $\theta$, otherwise it represents
-#' the limit of the MDYPL estimator of $\theta$ as computed by
+#' represents the oracle value of \eqn{\theta}, otherwise it represents
+#' the limit `iota` of the MDYPL estimator of \eqn{\theta} as computed by
 #' [mdyplFit()] with shrinkage parameter `alpha`.
 #'
+#' Note that `start` is always for `mu`, `b`,`sigma`, as is the
+#' result, regardless whether `transform = TRUE` or
+#' not. Transformations during optimization are done internally.
+#'
+#' @return
+#'
+#' If `intercept = NULL`, a vector with the values of `mu`,
+#' `b`,`sigma`. Otherwise, a vector with the values of `mu`,
+#' `b`,`sigma`, and `iota`, if `corrupted = FALSE`, or the value of
+#' the intercept otherwise. The vector has attributes the state
+#' evolution functions at the solution (`"funcs"`), the number of
+#' iterations used by the last optimization method (`"iter"`), any
+#' messages from the last optimization method (`"message"`), and
+#' information on the optimization methods used
+#' (`"optimization-chain"`).
+#'
+#' @author Ioannis Kosmidis `[aut, cre]` \email{ioannis.kosmidis@warwick.ac.uk}, Federico Boiocchi `[ctb]` \email{federico.boiocchi@gmail.com}, Philipp Sterzinger `[ctb, earlier Julia code by]` \email{P.Sterzinger@lse.ac.uk}
+#'
+#'
+#' @references
+#'
+#' Zhao Q, Sur P, Candes E J (2022). The asymptotic distribution of
+#' the MLE in high-dimensional logistic models: Arbitrary
+#' covariance. *Bernoulli*, **28**, 1835–1861. \doi{10.3150/21-BEJ1401}.
+#'
+#' Sterzinger P, Kosmidis I (2024). Diaconis-Ylvisaker prior
+#' penalized likelihood for \eqn{p/n \to \kappa \in (0,1)} logistic
+#' regression. *arXiv*:2311.07419v2, \url{https://arxiv.org/abs/2311.07419}.
+#'
+#'
+#' @examples
+#'
+#' ## Reproducing Table 13 of Zhao et al. (2022, DOI: 10.3150/21-BEJ1401)
+#' \dontrun{
+#'
+#' thetas <- c(0, 0.5, 1, 2, 2.5)
+#' gamma0 <- 5
+#' pars3 <- matrix(NA, length(thetas), 3)
+#' pars4 <- matrix(NA, length(thetas), 4)
+#' colnames(pars4) <- c("I_mu", "I_b", "I_sigma", "I_iota")
+#' colnames(pars3) <- c("II_mu", "II_b", "II_sigma")
+#' for (i in seq_along(thetas)) {
+#'     start3 <- c(0.5, 1, 1)
+#'     pars3[i, ] <- solve_se(kappa = 0.2, ss = sqrt(5 + thetas[i]^2),
+#'                            alpha = 1, start = start3, init_iter = 0)
+#'     start4 <- c(pars3[i, ], thetas[i])
+#'     pars4[i, ] <- solve_se(kappa = 0.2, ss = sqrt(5), intercept = thetas[i],
+#'                            alpha = 1, start = start4, init_iter = 0)
+#' }
+#'
+#' cbind(pars3, pars4)
+#'
+#' }
 #' @export
 solve_se <- function(kappa, ss, alpha, intercept = NULL, start, corrupted = FALSE, gh = NULL, prox_tol = 1e-10, transform = TRUE, init_method = "Nelder-Mead", init_iter = 50, ...) {
     is_corrupted <- isTRUE(corrupted)
@@ -79,7 +134,7 @@ solve_se <- function(kappa, ss, alpha, intercept = NULL, start, corrupted = FALS
         opt_chain <- paste0("optim(method = ", init_method, ")")
     } else {
         if (init_iter > 0) {
-            start <- init_solver(kappa, ss, alpha, intercept, start, gh, prox_tol, method = init_method, control = list(maxit = init_iter), ...);
+            start <- init_solver(kappa, ss, alpha, intercept, start, gh, prox_tol, method = init_method, control = list(maxit = init_iter));
             opt_chain <- paste0("optim(method = ", init_method, ", maxit = ", init_iter, ") -> ")
         } else {
             opt_chain <- ""
@@ -200,7 +255,7 @@ nleqslv_se_corrupted <- function(kappa, nu, alpha, iota = NULL, start, gh = NULL
     stopifnot(length(start) == npar)
     start <- c(if (transform) log(start[1:3]) else start[1:3],
                if (no_intercept) NULL else start[4])
-    res <- nleqslv(start, g, ...)
+    suppressWarnings(res <- nleqslv(start, g, ...))
     if (transform) {
         if (no_intercept) {
             soln <- exp(res$x)
@@ -233,7 +288,7 @@ optim_se <- function(kappa, gamma, alpha, intercept = NULL, start, gh = NULL, pr
     } else {
         soln <- c(exp(res$par[1:3]), res$par[4])
     }
-    attr(soln, "objective") <- res$value
+    attr(soln, "funcs") <- g(soln)
     attr(soln, "iter") <- res$counts
     attr(soln, "convergence") <- res$convergence
     attr(soln, "message") <- res$message
@@ -249,13 +304,13 @@ optim_se_corrupted <- function(kappa, nu, alpha, iota = NULL, start, gh = NULL, 
     obj <- function(pars) {
         sum(g(pars)^2)
     }
-    res <- optim(start, obj, ...)
+    suppressWarnings(res <- optim(start, obj, ...))
     if (no_intercept) {
         soln <- exp(res$par)
     } else {
         soln <- c(exp(res$par[1:3]), res$par[4])
     }
-    attr(soln, "funcs") <- g(soln)
+    suppressWarnings(attr(soln, "funcs") <- g(soln))
     attr(soln, "iter") <- res$counts
     attr(soln, "convergence") <- res$convergence
     attr(soln, "message") <- res$message

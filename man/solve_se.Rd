@@ -71,8 +71,17 @@ but can also be \code{0} in which case \code{start} is directly passed to
 \item{...}{further arguments to be passed to \code{\link[nleqslv:nleqslv]{nleqslv::nleqslv()}},
 unless \code{init_iter = "only"}, in which case \code{...} is further
 arguments to be passed to \code{\link[=optim]{optim()}}.}
-
-\item{mu}{aggregate bias parameter.}
+}
+\value{
+If \code{intercept = NULL}, a vector with the values of \code{mu},
+\code{b},\code{sigma}. Otherwise, a vector with the values of \code{mu},
+\code{b},\code{sigma}, and \code{iota}, if \code{corrupted = FALSE}, or the value of
+the intercept otherwise. The vector has attributes the state
+evolution functions at the solution (\code{"funcs"}), the number of
+iterations used by the last optimization method (\code{"iter"}), any
+messages from the last optimization method (\code{"message"}), and
+information on the optimization methods used
+(\code{"optimization-chain"}).
 }
 \description{
 Solve the MDYPL state evolution equations with or without
@@ -82,13 +91,16 @@ intercept, with signal strength or contaminated signal strength
 \code{init_iter} iterations of \code{\link[=optim]{optim()}} with \code{method = init_method} are
 used towards minimizing \code{sum(se)^2}, where \code{se} is a vector of the
 state evolution functions. The solution is then passed to
-\code{nleqslv::nleqslv()} for a more aggressive iteration.
+\code{nleqslv::nleqslv()} for a more aggressive iteration. The state
+evolution equations are given in expressions (8) (model without
+intercept) and expression (15) (model with intercept) in Sterzinger
+& Kosmidis (2024).
 
 If \code{corrupted = FALSE} (default), then \code{ss} is the square root of
-the signal strength, which is the limit \deqn{\gamma^2} of
+the signal strength, which is the limit \eqn{\gamma^2} of
 \eqn{var(X \beta)}. If \code{corrupted = TRUE}, then \code{ss} is the square
 root of the corrupteed signal strength which is the limit
-\deqn{\nu^2} of \eqn{var(X \hat\beta(\alpha))}, where
+\eqn{\nu^2} of \eqn{var(X \hat\beta(\alpha))}, where
 \eqn{\hat\beta(\alpha)} is the maximimum Diaconis-Ylvisaker prior
 penalized likelihood (MDYPL) estimator as computed by \code{\link[=mdyplFit]{mdyplFit()}}
 with shirnkage parameter \eqn{alpha}.
@@ -96,10 +108,50 @@ with shirnkage parameter \eqn{alpha}.
 If \code{intercept = NULL}, then the state evolution equations are
 solved for the model without intercept. If \code{intercept} is a real
 number, then the state evolution equations for the model with
-intercept are solved (i.e. with predictor \deqn{\eta_i = \theta +
+intercept are solved (i.e. with predictor \eqn{\eta_i = \theta +
 x_i^T \beta}). In that case, what \code{intercept} represents depends on
 the value of \code{corrupted}. If \code{corrupted = FALSE}, \code{intercept}
-represents the oracle value of $\theta$, otherwise it represents
-the limit of the MDYPL estimator of $\theta$ as computed by
+represents the oracle value of \eqn{\theta}, otherwise it represents
+the limit \code{iota} of the MDYPL estimator of \eqn{\theta} as computed by
 \code{\link[=mdyplFit]{mdyplFit()}} with shrinkage parameter \code{alpha}.
+
+Note that \code{start} is always for \code{mu}, \code{b},\code{sigma}, as is the
+result, regardless whether \code{transform = TRUE} or
+not. Transformations during optimization are done internally.
+}
+\examples{
+
+## Reproducing Table 13 of Zhao et al. (2022, DOI: 10.3150/21-BEJ1401)
+\dontrun{
+
+thetas <- c(0, 0.5, 1, 2, 2.5)
+gamma0 <- 5
+pars3 <- matrix(NA, length(thetas), 3)
+pars4 <- matrix(NA, length(thetas), 4)
+colnames(pars4) <- c("I_mu", "I_b", "I_sigma", "I_iota")
+colnames(pars3) <- c("II_mu", "II_b", "II_sigma")
+for (i in seq_along(thetas)) {
+    start3 <- c(0.5, 1, 1)
+    pars3[i, ] <- solve_se(kappa = 0.2, ss = sqrt(5 + thetas[i]^2),
+                           alpha = 1, start = start3, init_iter = 0)
+    start4 <- c(pars3[i, ], thetas[i])
+    pars4[i, ] <- solve_se(kappa = 0.2, ss = sqrt(5), intercept = thetas[i],
+                           alpha = 1, start = start4, init_iter = 0)
+}
+
+cbind(pars3, pars4)
+
+}
+}
+\references{
+Zhao Q, Sur P, Candes E J (2022). The asymptotic distribution of
+the MLE in high-dimensional logistic models: Arbitrary
+covariance. \emph{Bernoulli}, \strong{28}, 1835–1861. \doi{10.3150/21-BEJ1401}.
+
+Sterzinger P, Kosmidis I (2024). Diaconis-Ylvisaker prior
+penalized likelihood for \eqn{p/n \to \kappa \in (0,1)} logistic
+regression. \emph{arXiv}:2311.07419v2, \url{https://arxiv.org/abs/2311.07419}.
+}
+\author{
+Ioannis Kosmidis \verb{[aut, cre]} \email{ioannis.kosmidis@warwick.ac.uk}, Federico Boiocchi \verb{[ctb]} \email{federico.boiocchi@gmail.com}, Philipp Sterzinger \verb{[ctb, earlier Julia code by]} \email{P.Sterzinger@lse.ac.uk}
 }
