@@ -62,4 +62,3 @@ xx <- model.matrix(liz_fit_DY)
 expect_equal(
     sapply(2:ncol(xx), function(j) sum( lm.fit(xx[, -c(1, j)], xx[, j])$residuals^2 ) / (nrow(xx) - ncol(xx) + 2)) |> sqrt(),
     brglm2:::taus(liz_fit_DY))
-
