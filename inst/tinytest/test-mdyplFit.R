@@ -62,3 +62,40 @@ xx <- model.matrix(liz_fit_DY)
 expect_equal(
     sapply(2:ncol(xx), function(j) sum( lm.fit(xx[, -c(1, j)], xx[, j])$residuals^2 ) / (nrow(xx) - ncol(xx) + 2)) |> sqrt(),
     brglm2:::taus(liz_fit_DY))
+
+
+## logist_aic
+set.seed(111)
+tots <- c(11, 15, 5, 5, 15, 111, 8)
+succ <- c(0, 11, 3, 5, 2, 5, 7)
+fail <- tots - succ
+probs <- c(0, runif(length(fail) - 2), 1)
+expect_equal(brglm2:::logist_aic(succ / tots, tots, probs, tots),
+             binomial()$aic(succ / tots, tots, probs, tots))
+expect_equal(-brglm2:::logist_aic(succ / tots, tots, probs, tots) / 2,
+             sum(dbinom(succ, tots, probs, log = TRUE)))
+
+
+expect_equal(brglm2:::dbinom2(succ, tots, probs, log = FALSE),
+             dbinom(succ, tots, probs, log = FALSE))
+
+expect_equal(brglm2:::dbinom2(succ, tots, probs, log = TRUE),
+             dbinom(succ, tots, probs, log = TRUE))
+
+expect_equal(brglm2:::dbinom2(1, 1, 0), dbinom(1, 1, 0))
+expect_equal(brglm2:::dbinom2(1, 1, 1), dbinom(1, 1, 1))
+expect_equal(brglm2:::dbinom2(0, 1, 0), dbinom(0, 1, 0))
+expect_equal(brglm2:::dbinom2(0, 1, 1), dbinom(0, 1, 1))
+expect_equal(brglm2:::dbinom2(1, 0, 0), dbinom(1, 0, 0))
+expect_equal(brglm2:::dbinom2(1, 0, 1), dbinom(1, 0, 1))
+expect_equal(brglm2:::dbinom2(0, 0, 1), dbinom(0, 0, 1))
+expect_equal(brglm2:::dbinom2(0, 0, 0), dbinom(0, 0, 0))
+expect_equal(brglm2:::dbinom2(1, 1, 0), dbinom(1, 1, 0), log = TRUE)
+expect_equal(brglm2:::dbinom2(1, 1, 1), dbinom(1, 1, 1), log = TRUE)
+expect_equal(brglm2:::dbinom2(0, 1, 0), dbinom(0, 1, 0), log = TRUE)
+expect_equal(brglm2:::dbinom2(0, 1, 1), dbinom(0, 1, 1), log = TRUE)
+expect_equal(brglm2:::dbinom2(1, 0, 0), dbinom(1, 0, 0), log = TRUE)
+expect_equal(brglm2:::dbinom2(1, 0, 1), dbinom(1, 0, 1), log = TRUE)
+expect_equal(brglm2:::dbinom2(0, 0, 1), dbinom(0, 0, 1), log = TRUE)
+expect_equal(brglm2:::dbinom2(0, 0, 0), dbinom(0, 0, 0), log = TRUE)
+
