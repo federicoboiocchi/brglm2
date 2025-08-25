@@ -29,6 +29,14 @@
 #' [`"mdyplFit"`][mdyplFit()] will simply do maximum likelihood
 #' estimation.
 #'
+#' Note that `null.deviance`, `deviance` and `aic` in the resulting
+#' object are computed at the adjusted responses. Hence, methods such
+#' as [logLik()][stats::logLik()] and [AIC()][stats::AIC()] use the
+#' penalized log-likelihood. With the default `alpha`, the inferential
+#' procedures based on penalized likelihood are asymptotically
+#' equivalent to the ones that use the unpenalized likelihood when
+#' `p/n` is vanishing asymptotically.
+#'
 #' For high-dimensionality corrected estimates, standard errors and z
 #' statistics, use the [`summary`][summary.mdyplFit()] method for
 #' [`"mdyplFit"`](mdyplFit()) objects with `hd_correction = TRUE`.
@@ -176,11 +184,11 @@ mdyplFit <- function(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL
 
     ## Reset quantities in terms of original responses
     dev.resids <- family$dev.resids
-    out$null.deviance <- sum(dev.resids(y, nullmus, weights))
+    out$null.deviance <- sum(dev.resids(y_adj, nullmus, weights))
+    out$deviance <- sum(dev.resids(y_adj, mus, weights))
+    out$aic <- logist_aic(y_adj, n, mus, weights, deviance) + 2 * out$rank
     out$y_adj <- y_adj
     out$y <- y
-    out$deviance <- sum(dev.resids(y, mus, weights))
-    out$aic <- logist_aic(y_adj, n, mus, weights, deviance) + 2 * out$rank
     out$alpha <- alpha
     out$type <- "MPL_DY"
     out$control <- control
