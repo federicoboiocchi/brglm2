@@ -488,7 +488,7 @@ alpha <- 1/(1+k)
 Each row is a sample of 500 `PLR` for a specific combination of intercept
 and signal strength. The same is repeated for `rPLR`. The details about this simulation are provided in the last paragraph of section 8 of [P. Sterzinger, I. Kosmidis](https://arxiv.org/abs/2311.07419).
 
-```{r,eval=FALSE}
+```{r}
 PLR <- matrix(data=NA,ncol=500,nrow=20)
 rPLR <- matrix(data=NA,ncol=500,nrow=20)
 
@@ -554,3 +554,4 @@ legend("topright", inset=c(-1.2,-2), legend=c("PLR", "rescaled PLR","identity li
 
 
 As we can see, applying the correction suggested by Theorem 3.5 restores the result of Wilks's theorem: the corrected penalized likelihood ratio statistic follows a Chi-squared distribution with 64 degrees of freedom, corresponding to the difference between the total number of parameters and those constrained to be zero. It is also evident that as the intercept and signal strength increase, the correction becomes increasingly important, since the two QQ plots diverge more markedly.
+
