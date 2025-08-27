@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.width = 6,
   fig.height = 6,
-  knitr::opts_knit$set(root.dir = "C:/Users/andre/Documents/brglm2/R")
+  knitr::opts_knit$set(root.dir = "~/brglm2/R")
 )
 ```
 
@@ -47,9 +47,9 @@ we will illustrate empirically the results in *Theorem 3.1* and *3.5* of [P. Ste
 ## Dataset:
 Importing the data needed for the analysis
 ```{r}
-mfeat.fou <- read.table("C:/Users/andre/Downloads/multiple+features/mfeat-fou",sep = "")
-mfeat.kar <- read.table("C:/Users/andre/Downloads/multiple+features/mfeat-kar",sep = "")
-mfeat.pix <- read.table("C:/Users/andre/Downloads/multiple+features/mfeat-pix",sep = "")
+mfeat.fou <- read.table("~/multiple+features/mfeat-fou",sep = "")
+mfeat.kar <- read.table("~/multiple+features/mfeat-kar",sep = "")
+mfeat.pix <- read.table("~/multiple+features/mfeat-pix",sep = "")
 ```
 
 We are using the [**Multiple features**](https://archive.ics.uci.edu/dataset/72/multiple+features) dataset from UCI machine learning repository.
@@ -551,5 +551,6 @@ legend("topright", inset=c(-1.2,-2), legend=c("PLR", "rescaled PLR","identity li
        col=c("red","black","gold"), pch=c(1,1,NA),
        lty=c(NA, NA, 2),xpd=NA,cex=0.9)
 ```
+
 
 As we can see, applying the correction suggested by Theorem 3.5 restores the result of Wilks's theorem: the corrected penalized likelihood ratio statistic follows a Chi-squared distribution with 64 degrees of freedom, corresponding to the difference between the total number of parameters and those constrained to be zero. It is also evident that as the intercept and signal strength increase, the correction becomes increasingly important, since the two QQ plots diverge more markedly.
