@@ -1,3 +1,18 @@
+# Copyright (C) 2025- Ioannis Kosmidis
+
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 or 3 of the License
+#  (at your option).
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  A copy of the GNU General Public License is available at
+#  http://www.r-project.org/Licenses/
+
 #' Fitting function for [glm()] for maximum Diaconis-Ylvisaker prior
 #' penalized likelihood estimation of logistic regression models
 #'
@@ -25,9 +40,8 @@
 #' By default, `alpha = m / (p + m)` is used, where `m` is the sum of
 #' the binomial totals. Alternative values of `alpha` can be passed to
 #' the `control` argument; see [mdyplControl()] for setting up the
-#' list passed to `control`. If `alpha = 1` then
-#' [`"mdyplFit"`][mdyplFit()] will simply do maximum likelihood
-#' estimation.
+#' list passed to `control`. If `alpha = 1` then [mdyplFit()] will
+#' simply do maximum likelihood estimation.
 #'
 #' Note that `null.deviance`, `deviance` and `aic` in the resulting
 #' object are computed at the adjusted responses. Hence, methods such
@@ -39,7 +53,7 @@
 #'
 #' For high-dimensionality corrected estimates, standard errors and z
 #' statistics, use the [`summary`][summary.mdyplFit()] method for
-#' [`"mdyplFit"`](mdyplFit()) objects with `hd_correction = TRUE`.
+#' [`"mdyplFit"`][mdyplFit()] objects with `hd_correction = TRUE`.
 #'
 #' [mdypl_fit()] is an alias to [mdyplFit()].
 #'
@@ -51,7 +65,7 @@
 #'
 #' @author Ioannis Kosmidis `[aut, cre]` \email{ioannis.kosmidis@warwick.ac.uk}
 #'
-#' @seealso [mdyplControl()], [glm.fit()], [glm()]
+#' @seealso [mdyplControl()], [summary.mdyplFit()], [plrtest.mdyplFit()], [glm()]
 #'
 #' @references
 #'
@@ -83,7 +97,7 @@
 #'                  method = "mdyplFit")
 #'
 #' ## Comparing outputs from ML and MDYPL, with and without
-#' ## high-dimensionality corrections. #'
+#' ## high-dimensionality corrections.
 #' summary(liz_mdypl)
 #' summary(liz_mdypl, hd_correction = TRUE)
 #' summ_liz_ml
@@ -91,6 +105,36 @@
 #' ## Not much difference in fits here as this is a low dimensional
 #' ## problem with dimensionality constant
 #' (liz_ml$rank - 1) / sum(weights(liz_ml))
+#'
+#'
+#'
+#' ## The case study in Section 8 of Sterzinger and
+#' ## Kosmidis (2024)
+#' data("MultipleFeatures", package = "brglm2")
+#'
+#' ## Center the fou.* and kar.* features
+#' vars <- grep("fou|kar", names(MultipleFeatures), value = TRUE)
+#' train_id <- which(MultipleFeatures$training)
+#' MultipleFeatures[train_id, vars] <- scale(MultipleFeatures[train_id, vars], scale = FALSE)
+#' ## Compute the MDYPL fits
+#' kappa <- length(vars) / sum(MultipleFeatures$training)
+#' full_fm <- formula(paste("I(digit == 7) ~", paste(vars, collapse = " + ")))
+#' nest_vars <- grep("fou", vars, value = TRUE)
+#' nest_fm <- formula(paste("I(digit == 7) ~", paste(nest_vars, collapse = " + ")))
+#' full_m <- glm(full_fm, data = MultipleFeatures, family = binomial(),
+#'               method = mdyplFit, alpha = 1 / (1 + kappa), subset = training)
+#' nest_m <- update(full_m, nest_fm)
+#'
+#' ## With a naive penalized likelihood ratio test we get no evidence
+#' ## against the hypothesis that the model with only `fou` features
+#' ## is an as good descrition of `7` as the model with both `fou` and
+#' ## `kar` features.
+#' plrtest(nest_m, full_m)
+#'
+#' ## With a high-dimensionality correction theres is strong evidence
+#' ## against the model with only `fou` features
+#' plrtest(nest_m, full_m, hd_correction = TRUE)
+#'
 #'
 #' \dontrun{
 #' ## A simulated data set as in Rigon & Aliverti (2023, Section 4.3)
@@ -147,7 +191,7 @@ mdyplFit <- function(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL
         offset <- rep.int(0, nobs)
     }
 
-    alpha <- unless_null(control$alpha, sum(weights) / (sum(weights) + ncol(x)))
+    alpha <- unless_null(control$alpha, sum(weights) / (sum(weights) + ncol(x) - intercept))
 
     ## adjust responses as per MDYPL with beta_P = 0
     y_adj <- alpha * y + (1 - alpha) / 2
@@ -276,7 +320,7 @@ mdyplControl <- function(alpha = NULL, epsilon = 1e-08, maxit = 25, trace = FALS
 #' ([mdypl_fit()]) has been put forward in Sterzinger & Kosmidis
 #' (2025).
 #'
-#' In partiuclar, [sloe()] computes an estimate of the corrupteed
+#' In particular, [sloe()] computes an estimate of the corrupted
 #' signal strength which is the limit \deqn{\nu^2} of \eqn{var(X
 #' \hat\beta(\alpha))}, where \eqn{\hat\beta(\alpha)} is the maximum
 #' Diaconis-Ylvisaker prior penalized likelihood (MDYPL) estimator as
@@ -296,9 +340,9 @@ mdyplControl <- function(alpha = NULL, epsilon = 1e-08, maxit = 25, trace = FALS
 #' penalized likelihood for \eqn{p/n \to \kappa \in (0,1)} logistic
 #' regression. *arXiv*:2311.07419v2, \url{https://arxiv.org/abs/2311.07419}.
 #'
-#' Yadlowsky S, Yun T, McLean CY, D' Amour A (2021). SLOE: A Faster
+#' Yadlowsky S, Yun T, McLean C Y, D' Amour A (2021). SLOE: A Faster
 #' Method for Statistical Inference in High-Dimensional Logistic
-#' Regression. In M Ranzato, A Beygelzimer, Y Dauphin, P Liang, JW
+#' Regression. In M Ranzato, A Beygelzimer, Y Dauphin, P Liang, J W
 #' Vaughan (eds.), *Advances in Neural Information Processing
 #' Systems*, **34**, 29517–29528. Curran Associates,
 #' Inc. \url{https://proceedings.neurips.cc/paper_files/paper/2021/file/f6c2a0c4b566bc99d596e58638e342b0-Paper.pdf}.
@@ -375,7 +419,7 @@ taus <- function(object) {
 #'
 #' @references
 #'
-#' Zhao Q, Sur P, Candes E J (2022). The asymptotic distribution of
+#' Zhao Q, Sur P, Cand\`es E J (2022). The asymptotic distribution of
 #' the MLE in high-dimensional logistic models: Arbitrary
 #' covariance. *Bernoulli*, **28**,
 #' 1835–1861. \doi{10.3150/21-BEJ1401}.

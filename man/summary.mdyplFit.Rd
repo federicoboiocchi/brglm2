@@ -39,7 +39,7 @@ standard errors, z-statistics. See Details.}
 equations. See the \code{start} argument in \code{\link[=solve_se]{solve_se()}}.}
 
 \item{gh}{A list with the Gauss-Hermite quadrature nodes and
-nweights, as returned from \code{statmod::gauss.quad()} with \code{kind = "hermite"}. Default is \code{NULL}, in which case \code{gh} is set to
+weights, as returned from \code{statmod::gauss.quad()} with \code{kind = "hermite"}. Default is \code{NULL}, in which case \code{gh} is set to
 \code{statmod::gauss.quad(200, kind = "hermite")}.}
 
 \item{prox_tol}{tolerance for the computation of the proximal
@@ -150,7 +150,7 @@ abline(0, 1, lty = 2)
 
 }
 \references{
-Zhao Q, Sur P, Candes E J (2022). The asymptotic distribution of
+Zhao Q, Sur P, Cand\`es E J (2022). The asymptotic distribution of
 the MLE in high-dimensional logistic models: Arbitrary
 covariance. \emph{Bernoulli}, \strong{28},
 1835–1861. \doi{10.3150/21-BEJ1401}.

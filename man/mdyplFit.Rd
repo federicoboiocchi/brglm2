@@ -93,9 +93,8 @@ set to zero. See Rigon & Aliverti (2023) and Sterzinger & Kosmidis
 By default, \code{alpha = m / (p + m)} is used, where \code{m} is the sum of
 the binomial totals. Alternative values of \code{alpha} can be passed to
 the \code{control} argument; see \code{\link[=mdyplControl]{mdyplControl()}} for setting up the
-list passed to \code{control}. If \code{alpha = 1} then
-\code{\link[=mdyplFit]{"mdyplFit"}} will simply do maximum likelihood
-estimation.
+list passed to \code{control}. If \code{alpha = 1} then \code{\link[=mdyplFit]{mdyplFit()}} will
+simply do maximum likelihood estimation.
 
 Note that \code{null.deviance}, \code{deviance} and \code{aic} in the resulting
 object are computed at the adjusted responses. Hence, methods such
@@ -107,7 +106,7 @@ equivalent to the ones that use the unpenalized likelihood when
 
 For high-dimensionality corrected estimates, standard errors and z
 statistics, use the \code{\link[=summary.mdyplFit]{summary}} method for
-\href{mdyplFit()}{\code{"mdyplFit"}} objects with \code{hd_correction = TRUE}.
+\code{\link[=mdyplFit]{"mdyplFit"}} objects with \code{hd_correction = TRUE}.
 
 \code{\link[=mdypl_fit]{mdypl_fit()}} is an alias to \code{\link[=mdyplFit]{mdyplFit()}}.
 }
@@ -131,7 +130,7 @@ liz_mdypl <- glm(liz_ml, family = binomial(), data = lizards,
                  method = "mdyplFit")
 
 ## Comparing outputs from ML and MDYPL, with and without
-## high-dimensionality corrections. #'
+## high-dimensionality corrections.
 summary(liz_mdypl)
 summary(liz_mdypl, hd_correction = TRUE)
 summ_liz_ml
@@ -139,6 +138,36 @@ summary(liz_ml, hd_correction = TRUE)
 ## Not much difference in fits here as this is a low dimensional
 ## problem with dimensionality constant
 (liz_ml$rank - 1) / sum(weights(liz_ml))
+
+
+
+## The case study in Section 8 of Sterzinger and
+## Kosmidis (2024)
+data("MultipleFeatures", package = "brglm2")
+
+## Center the fou.* and kar.* features
+vars <- grep("fou|kar", names(MultipleFeatures), value = TRUE)
+train_id <- which(MultipleFeatures$training)
+MultipleFeatures[train_id, vars] <- scale(MultipleFeatures[train_id, vars], scale = FALSE)
+## Compute the MDYPL fits
+kappa <- length(vars) / sum(MultipleFeatures$training)
+full_fm <- formula(paste("I(digit == 7) ~", paste(vars, collapse = " + ")))
+nest_vars <- grep("fou", vars, value = TRUE)
+nest_fm <- formula(paste("I(digit == 7) ~", paste(nest_vars, collapse = " + ")))
+full_m <- glm(full_fm, data = MultipleFeatures, family = binomial(),
+              method = mdyplFit, alpha = 1 / (1 + kappa), subset = training)
+nest_m <- update(full_m, nest_fm)
+
+## With a naive penalized likelihood ratio test we get no evidence
+## against the hypothesis that the model with only `fou` features
+## is an as good descrition of `7` as the model with both `fou` and
+## `kar` features.
+plrtest(nest_m, full_m)
+
+## With a high-dimensionality correction theres is strong evidence
+## against the model with only `fou` features
+plrtest(nest_m, full_m, hd_correction = TRUE)
+
 
 \dontrun{
 ## A simulated data set as in Rigon & Aliverti (2023, Section 4.3)
@@ -174,7 +203,7 @@ logistic regression models. \emph{Statistics & Probability Letters},
 \strong{202}, 109901. \doi{10.1016/j.spl.2023.109901}.
 }
 \seealso{
-\code{\link[=mdyplControl]{mdyplControl()}}, \code{\link[=glm.fit]{glm.fit()}}, \code{\link[=glm]{glm()}}
+\code{\link[=mdyplControl]{mdyplControl()}}, \code{\link[=summary.mdyplFit]{summary.mdyplFit()}}, \code{\link[=plrtest.mdyplFit]{plrtest.mdyplFit()}}, \code{\link[=glm]{glm()}}
 }
 \author{
 Ioannis Kosmidis \verb{[aut, cre]} \email{ioannis.kosmidis@warwick.ac.uk}

@@ -1,3 +1,18 @@
+# Copyright (C) 2025- Ioannis Kosmidis, Federico Boiocchi, Philipp Sterzinger
+
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 or 3 of the License
+#  (at your option).
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  A copy of the GNU General Public License is available at
+#  http://www.r-project.org/Licenses/
+
 #' Solve the MDYPL state evolution equations with or without
 #' intercept, with signal strength or contaminated signal strength
 #'
@@ -20,7 +35,7 @@
 #'     `intercept`, if numeric, is the limit of the estimator computed
 #'     by [mdyplFit()] with shrinkage parameter `alpha`. See Details.
 #' @param gh A list with the Gauss-Hermite quadrature nodes and
-#'     nweights, as returned from `statmod::gauss.quad()` with `kind =
+#'     weights, as returned from `statmod::gauss.quad()` with `kind =
 #'     "hermite"`. Default is `NULL`, in which case `gh` is set to
 #'     `statmod::gauss.quad(200, kind = "hermite")`.
 #' @param prox_tol tolerance for the computation of the proximal
@@ -56,8 +71,8 @@
 #' the signal strength, which is the limit \eqn{\gamma^2} of
 #' \eqn{var(X \beta)}. If `corrupted = TRUE`, then `ss` is the square
 #' root of the corrupted signal strength which is the limit
-#' \eqn{\nu^2} of \eqn{var(X \hat\beta(\alpha))}, where
-#' \eqn{\hat\beta(\alpha)} is the maximum Diaconis-Ylvisaker prior
+#' \eqn{\nu^2} of \eqn{var(X hat(beta)(\alpha))}, where
+#' \eqn{hat(\beta)(\alpha)} is the maximum Diaconis-Ylvisaker prior
 #' penalized likelihood (MDYPL) estimator as computed by [mdyplFit()]
 #' with shrinkage parameter \eqn{alpha}.
 #'
@@ -92,7 +107,7 @@
 #'
 #' @references
 #'
-#' Zhao Q, Sur P, Candes E J (2022). The asymptotic distribution of
+#' Zhao Q, Sur P, Cand\`es E J (2022). The asymptotic distribution of
 #' the MLE in high-dimensional logistic models: Arbitrary
 #' covariance. *Bernoulli*, **28**, 1835–1861. \doi{10.3150/21-BEJ1401}.
 #'

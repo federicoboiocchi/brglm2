@@ -19,7 +19,6 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 [![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/brglm2)](https://cran.r-project.org/package=brglm2)
 [![R-CMD-check](https://github.com/ikosmidis/brglm2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ikosmidis/brglm2/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/gh/ikosmidis/brglm2/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ikosmidis/brglm2?branch=master)
 [![Licence](https://img.shields.io/badge/licence-GPL--3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html)
 [![Codecov test coverage](https://codecov.io/gh/ikosmidis/brglm2/graph/badge.svg)](https://app.codecov.io/gh/ikosmidis/brglm2)
@@ -47,7 +46,7 @@ estimator from the maximum likelihood estimates as prescribed in
 (1991)](https://www.jstor.org/stable/2345592). [Kosmidis et al
 (2020)](https://doi.org/10.1007/s11222-019-09860-6) provides a
 unifying framework and algorithms for mean and median bias reduction
-for the estimation of generalized linear models.
+for the estimation of generalized linear models. 
 
 In the special case of generalized linear models for binomial and
 multinomial responses (both ordinal and nominal), the adjusted score
@@ -60,12 +59,19 @@ latter result in the case of mean bias reduction for logistic
 regression (and, for more general binomial-response models where the
 likelihood is penalized by a power of the Jeffreys' invariant prior).
 
-The core model fitters are implemented by the functions `brglm_fit()`
-(univariate generalized linear models), `brmultinom()` (baseline
-category logit models for nominal multinomial responses), `bracl()`
-(adjacent category logit models for ordinal multinomial responses),
-and `brnb()` for negative binomial regression.
+For logistic regression, **brglm2** also provides methods for maximum
+Diaconis-Ylvisaker prior penalized likelihood (MDYPL) estimation, and
+corresponding methods for high-dimensionality corrections of the
+aggregate bias of the estimator and the usual statistics used for
+inference; see [Sterzinger and Kosmidis,
+2024](https://arxiv.org/abs/2311.07419).
 
+The core model fitters are implemented by the functions `brglm_fit()`
+(univariate generalized linear models) and `mdyplFit()` (logistic
+regression), and `brmultinom()` (baseline category logit models for
+nominal multinomial responses), `bracl()` (adjacent category logit
+models for ordinal multinomial responses), and `brnb()` (negative
+binomial regression).
 
 ## Installation
 
@@ -82,7 +88,7 @@ or the development version from github:
 remotes::install_github("ikosmidis/brglm2", ref = "develop")
 ```
 
-## Example
+## Examples
 
 ### Estimation of binomial-response GLMs with separated data
 
@@ -105,7 +111,7 @@ actually infinite, as can be quickly verified using the
 ```{r, echo = TRUE, eval = TRUE}
 # install.packages("detectseparation")
 library("detectseparation")
-update(modML, method = "detect_separation")
+update(modML, method = detect_separation)
 ```
 
 The reported, apparently finite estimate `r
@@ -113,8 +119,7 @@ round(coef(summary(modML))["NV", "Estimate"], 3)` for `NV` is merely
 due to false convergence of the iterative estimation procedure for
 ML. The same is true for the estimated standard error, and, hence the
 value `r round(coef(summary(modML))["NV", "z value"], 3)` for the
-$z$-statistic cannot be trusted for inference on the size of the
-effect for `NV`.
+$z$-statistic cannot be trusted for inference on the effect size for `NV`.
 
 As mentioned earlier, many of the estimation methods implemented in
 **brglm2** not only return estimates with improved frequentist
@@ -170,31 +175,160 @@ estimated odds of high histology grade are about `r round(coef(expoRB)["NV"], 1)
 providing evidence of association between `NV` and `HG` while
 controlling for `PI` and `EH`. Note here that, the maximum likelihood estimate of the odds ratio is not as useful as the `correction*` estimate, because it is $+\infty$ with an infinite standard error (see previous section). 
 
-## Solving adjusted score equations using quasi-Fisher scoring
+### MDYPL estimation and high-dimensionality corrections
 
-The workhorse function in **brglm2** is
-[`brglm_fit`](https://github.com/ikosmidis/brglm2/blob/master/R/brglmFit.R)
-(or equivalently `brglmFit` if you like camel case), which, as we did
-in the example above, can be passed directly to the `method` argument
-of the `glm` function. `brglm_fit` implements a quasi [Fisher
+Consider the [Multiple Features
+dataset](https://doi.org/10.24432/C5HC70), which consists of digits
+(0-9) extracted from a collection of maps from a Dutch public utility.
+Two hundred `30 × 48` binary images per digit were available, which
+have then been used to extract feature sets. The digits are shown
+below using pixel averages in `2 x 3` windows.
+
+```{r, echo = TRUE, eval = TRUE}
+data("MultipleFeatures", package = "brglm2")
+par(mfrow = c(10, 20), mar = numeric(4) + 0.1)
+for (c_digit in 0:9) {
+    df <- subset(MultipleFeatures, digit == c_digit)
+    df <- as.matrix(df[, paste("pix", 1:240, sep = ".")])
+    for (inst in 1:20) {
+        m <- matrix(df[inst, ], 15, 16)[, 16:1]
+        image(m, col = grey.colors(7, 1, 0), xaxt = "n", yaxt = "n")
+    }
+}
+```
+
+We focus on the setting of [Sterzinger and Kosmidis (2024, Section
+8)](https://arxiv.org/abs/2311.07419) on explaining the character
+shapes of the digit `7` in terms of 76 Fourier coefficients (`fou`
+features), which are computed to be rotationally invariant, and 64
+Karhunen-Loève coefficients (`kar` features), using 1000 randomly
+selected digits. Depending on the font, the level of noise introduced
+during digitization, and the downscaling of the digits to binary
+images, difficulties may arise in discriminating instances of the
+digit `7` to instances of the digits `1` and `4`. Also, if only
+rotation invariant features, like `fou`, are used difficulties may
+arise in discriminating instances of the digit `7` to instances of the
+digit `2`.
+
+The data is perfectly separated for both the model with only `fou`
+features, and the model with `fou` and `kar` features, and the
+maximized likelihood is zero for both models. 
+```{r, echo = TRUE, eval = TRUE}
+## Center the fou.* and kar.* features
+vars <- grep("fou|kar", names(MultipleFeatures), value = TRUE)
+train_id <- which(MultipleFeatures$training)
+MultipleFeatures[train_id, vars] <- scale(MultipleFeatures[train_id, vars], scale = FALSE)
+## Set up module formulas
+full_fm <- formula(paste("I(digit == 7) ~", paste(vars, collapse = " + ")))
+nest_vars <- grep("fou", vars, value = TRUE)
+nest_fm <- formula(paste("I(digit == 7) ~", paste(nest_vars, collapse = " + ")))
+## Fit the models using maximum likelihood
+full_sep <- glm(full_fm, data = MultipleFeatures, family = binomial(), subset = training,
+                method = detect_separation)
+nest_sep <- update(full_sep, nest_fm)
+full_sep$outcome
+nest_sep$outcome
+```
+
+As a result, the likelihood ratio statistic comparing the two models
+will be trivially zero, regardless of any evidence against the hypothesis that
+the model with only `fou` features is an as good description of `7` as
+the model with both `fou` and `kar` features.
+```{r, echo = TRUE, eval = TRUE}
+anova(update(nest_sep, method = glm.fit),
+      update(full_sep, method = glm.fit))
+```
+
+Let's fit the models using maximum Diaconis-Ylvisaker prior penalized
+likelihood (MDYPL) with a shrinkage parameter `alpha` in `(0, 1)`, which
+always results in finite estimates; see `?brglm2::mdypl_fit`. The
+corresponding penalized likelihood ratio test (see `?brglm2::plrtest`
+and `?brglm2::summary.mdyplFit`) results again in no evidence against
+the hypothesis.
+
+```{r, echo = TRUE, eval = TRUE}
+full_m <- update(full_sep, method = mdypl_fit)
+nest_m <- update(nest_sep, method = mdypl_fit, alpha = full_m$alpha)
+plrtest(nest_m, full_m)
+```
+
+Nevertheless, `full_m` involves 141 parameters, which is relatively
+large compared to the 1000 available observations. The distribution of
+the penalized likelihood ratio statistic may be far from the
+asymptotic $\chi^2$ distribution that we expect under usual
+asymptotics.
+
+In stark contrast to the evidence quantified by the previous tests,
+the high-dimensionality correction to the penalized likelihood ratio
+statistic under proportional asymptotics proposed in [Sterzinger and Kosmidis
+(2024)](https://arxiv.org/abs/2311.07419) results in strong evidence
+against the model with `fou` features only.
+
+```{r, echo = TRUE, eval = TRUE}
+plrtest(nest_m, full_m, hd_correction = TRUE)
+```
+
+The estimates can be corrected in terms of aggregate bias using the
+`summary()` method. 
+```{r, echo = TRUE, eval = TRUE}
+summ_full_m <- summary(full_m, hd_correction = TRUE)
+```
+
+The correction proceeds by estimating the constant $\mu$ by which the
+estimates are divided in order to recover the asymptotic aggregate
+unbiasedness of the estimator. The figure below illustrates that the
+impact of the correction is to inflate the MDYPL estimates.
+
+```{r, echo = TRUE, eval = FALSE}
+rescaled_coefs <- coef(summ_full_m)[-1, ]
+acols <- hcl.colors(3, alpha = 0.2)
+cols <- hcl.colors(3)
+plot(coef(full_m)[-1], rescaled_coefs[, "Estimate"],
+     xlim = c(-9, 9), ylim = c(-9, 9),
+     xlab = "MDYPL estimates", ylab = "rescaled MDYPL estimates",
+     pch = 21,
+     bg = acols[grepl("kar", rownames(rescaled_coefs)) + 1],
+     col = NULL)
+legend(-9, 9, legend = c("fou", "kar"), pt.bg = cols[1:2], col = NA, pch = 21,
+       title = "Features")
+legend(-5.4, 9, legend = expression(1, 1/hat(mu)), lty = c(2, 1), col = "grey",
+       title = "Slope")
+abline(0, 1, col = "grey", lty = 2)
+abline(0, 1/summ_full_m$se_parameters[1], col = "grey")
+
+```
+
+
+## Estimation methods 
+
+The workhorse function in **brglm2** is `brglm_fit()` (or equivalently
+`brglmFit()` if you like camel case), which, as we did in the example
+above, can be passed directly to the `method` argument of the `glm()`
+function. `brglm_fit()` implements a quasi [Fisher
 scoring](https://en.wikipedia.org/wiki/Scoring_algorithm) procedure,
 whose special cases result in a range of explicit and implicit bias
 reduction methods for generalized linear models for more
 details). Bias reduction for multinomial logistic regression (nominal
-responses) can be performed using the function `brmultinom`, and for
+responses) can be performed using the function `brmultinom()`, and for
 adjacent category models (ordinal responses) using the function
-`bracl`. Both `brmultinom` and `bracl` rely on `brglm_fit`.
-
-The [iteration
-vignette](https://cran.r-project.org/package=brglm2/vignettes/iteration.html)
-and [Kosmidis et al
-(2020)](https://doi.org/10.1007/s11222-019-09860-6) present the
-iteration and give mathematical details for the bias-reducing
-adjustments to the score functions for generalized linear models.
+`bracl()`. Both `brmultinom()` and `bracl()` rely on `brglm_fit`.
 
 The classification of bias reduction methods into explicit and
 implicit is as given in [Kosmidis
 (2014)](https://doi.org/10.1002/wics.1296).
+
+For logistic regression models, in particular, the `mdypl_fit()`
+function provides maximum Diaconis-Ylvisaker prior penalized
+likelihood estimation, and can again be passed directly to the
+`method` argument of the `glm()` function. The `summary()` method for
+`mdyplFit` objects, then allows for high-dimensional corrections of
+aggregate bias and of standard $z$-statistics under proportional
+asymptotics, and the `plrtest()` method allows for penalized
+likelihood ratio tests with and without high-dimensional corrections;
+see [Sterzinger and Kosmidis
+(2024)](https://arxiv.org/abs/2311.07419), the example above, and the
+help pages of the methods.
+
 
 ## References and resources
 
@@ -205,8 +339,22 @@ was titled "Reduced-bias inference in generalized linear models".
 
 Motivation, details and discussion on the methods that **brglm2** implements are provided in
 
-Kosmidis, I, Kenne Pagui, E C, Sartori N. (2020). Mean and median bias reduction in generalized linear models. [*Statistics and Computing*](https://doi.org/10.1007/s11222-019-09860-6) *30*, 43–59.
+> Kosmidis, I, Kenne Pagui, E C, Sartori N. (2020). Mean and median bias reduction in generalized linear models. [*Statistics and Computing*](https://doi.org/10.1007/s11222-019-09860-6) *30*, 43–59.
+
+
+The [iteration vignette](https://cran.r-project.org/package=brglm2/vignettes/iteration.html) presents the iteration and give mathematical details for the bias-reducing adjustments to the score functions for generalized linear models.
+
+Maximum Diaconis-Ylvisaker prior penalized likelihood and high-dimensionality corrections under proportional asymptotics are described in
+
+> Sterzinger P, Kosmidis I (2024). Diaconis-Ylvisaker prior penalized likelihood for $p/n \to \kappa \in (0,1)$ logistic regression. [*arXiv*:2311.07419v2](https://arxiv.org/abs/2311.07419).
+
+
+
+
 
 ## Code of Conduct
 
 Please note that the **brglm2** project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.
+
+
+
